@@ -13,7 +13,7 @@ import { SCENARIOS, SENSOR_BY_KEY } from "@/lib/simulation";
 
 export default function DashboardPage() {
   const sim = useCitySimulation();
-  const { state, sensors, traffic, energy, trafficSummary, energySummary, health, alerts, baseline } = sim;
+  const { state, sensors, traffic, energy, trafficSummary, energySummary, security, health, alerts, baseline } = sim;
 
   const impact = state.impact;
   const impactSource = impact
@@ -32,7 +32,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <DashboardHeader criticalCount={alerts.filter((a) => a.type === "critical").length} live={state.live} />
 
-      <ControlBar state={state} onScenario={sim.applyScenario} onToggle={sim.toggle} onReset={sim.reset} />
+      <ControlBar state={state} onScenario={sim.applyScenario} onToggle={sim.toggle} onReset={sim.reset} onContext={sim.setContext} />
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-label="Sensores del barrio">
         {sensors.map((sensor, i) => (
@@ -49,12 +49,12 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TrafficChart data={traffic} summary={trafficSummary} baseSummary={baseline.trafficSummary} compare={state.compare} />
+        <TrafficChart data={traffic} summary={trafficSummary} baseSummary={baseline.trafficSummary} compare={state.compare} franja={state.franja} />
         <EnergyChart data={energy} summary={energySummary} baseSummary={baseline.energySummary} compare={state.compare} />
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <CityScene className="lg:col-span-2" values={state.values} trafficSummary={trafficSummary} live={state.live} />
+        <CityScene className="lg:col-span-2" values={state.values} trafficSummary={trafficSummary} live={state.live} clima={state.clima} franja={state.franja} security={security} />
         <CityHealth health={health} baseScore={baseline.health.score} />
       </section>
 

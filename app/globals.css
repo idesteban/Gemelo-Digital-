@@ -97,6 +97,9 @@ body {
 .scene-led { animation: blink 1.8s linear infinite; }
 .scene-sweep { transform-box: fill-box; transform-origin: 0% 50%; animation: sweep 4s ease-in-out infinite; }
 .scene-smog { animation: drift 9s ease-in-out infinite alternate; }
+@keyframes rain { from { transform: translate(0, 0); } to { transform: translate(-18px, 300px); } }
+.scene-rain { animation: rain 0.55s linear infinite; }
+.scene-hail { animation: rain 1.1s linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -1,14 +1,15 @@
 "use client";
-import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartCard, ChartTooltip, LegendRow, SERIES, Stat, pctDelta } from "@/components/dashboard/ChartParts";
-import { formatNumber } from "@/lib/simulation";
+import { formatNumber, franjaById } from "@/lib/simulation";
 
 const ROWS = [
   { key: "vehiculos", baseKey: "baseVehiculos", label: "vehículos", color: SERIES.blue },
   { key: "peatones", baseKey: "basePeatones", label: "peatones", color: SERIES.green },
 ];
 
-export default function TrafficChart({ data, summary, baseSummary, compare = false }) {
+export default function TrafficChart({ data, summary, baseSummary, compare = false, franja }) {
+  const band = franja ? franjaById(franja) : null;
   const max = Math.max(...data.map((d) => Math.max(d.vehiculos, compare ? d.baseVehiculos : 0)));
   const top = Math.max(1200, Math.ceil(max / 300) * 300);
   const ticks = Array.from({ length: top / 300 + 1 }, (_, i) => i * 300);
@@ -39,6 +40,10 @@ export default function TrafficChart({ data, summary, baseSummary, compare = fal
                 <stop offset="100%" stopColor={SERIES.green} stopOpacity={0.02} />
               </linearGradient>
             </defs>
+            {band?.hours.length > 0 && (
+              <ReferenceArea x1={band.hours[0]} x2={band.hours[1]} fill="#94a3b8" fillOpacity={0.08} ifOverflow="extendDomain"
+                label={{ value: band.name, position: "insideTopLeft", fill: "#94a3b8", fontSize: 11 }} />
+            )}
             <CartesianGrid stroke={SERIES.grid} vertical={false} />
             <XAxis dataKey="hora" stroke={SERIES.axis} tick={{ fill: SERIES.tick, fontSize: 12 }} tickLine={false} />
             <YAxis

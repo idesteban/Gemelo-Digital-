@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import {
-  BASE_VALUES, COUPLINGS, SCENARIOS, SENSORS, SENSOR_BY_KEY,
-  buildEnergyData, buildSensors, buildTrafficData, clamp, computeHealth,
-  formatValue, generateAlerts, snap, summarizeEnergy, summarizeTraffic,
+  BASE_VALUES, COUPLINGS, DEFAULT_CONTEXT, SCENARIOS, SENSORS, SENSOR_BY_KEY,
+  buildEnergyData, buildSensors, buildTrafficData, clamp, climaById, computeHealth, computeSecurity,
+  formatValue, franjaById, generateAlerts, snap, summarizeEnergy, summarizeTraffic,
 } from "@/lib/simulation";
 
 // Ruido del modo "en vivo": sigma por variable y fuerza de retorno al valor fijado.
@@ -18,6 +18,7 @@ function initState() {
   return {
     values: { ...BASE_VALUES },
     anchors: { ...BASE_VALUES }, // valores fijados por el usuario (el modo en vivo oscila alrededor)
+    ...DEFAULT_CONTEXT,
     coupling: true,
     live: false,
     compare: true,
@@ -105,11 +106,26 @@ function reducer(state, action) {
       const settle = action.flag === "live" && !on ? { values: { ...state.anchors } } : {};
       return { ...state, ...settle, [action.flag]: on, log: pushLog(state.log, { kind: "system", text: labels[action.flag] }) };
     }
+    case "SET_CONTEXT": {
+      // Clima y franja fijan la temperatura típica de Bogotá; la franja fija el tráfico.
+      let next = { ...state, ...action.ctx };
+      const c = climaById(next.clima);
+      const f = franjaById(next.franja);
+      next = reducer(next, { type: "SET_VALUE", key: "temperatura", value: f.baseTemp + c.temp, at: action.at });
+      if (action.ctx.franja) {
+        next = reducer(next, { type: "SET_VALUE", key: "flujo", value: f.flujo, at: action.at + 2000 });
+      }
+      const text = action.ctx.clima
+        ? `Clima: ${c.name} · ${formatValue("temperatura", next.values.temperatura)} °C`
+        : `Franja horaria: ${f.name} (${f.range}) · ${formatValue("flujo", next.values.flujo)} veh/h`;
+      return { ...next, log: pushLog(next.log, { kind: "scenario", text }) };
+    }
     case "LOG":
       return { ...state, log: pushLog(state.log, action.entry) };
     case "RESET":
       return {
         ...state,
+        ...DEFAULT_CONTEXT,
         values: { ...BASE_VALUES },
         anchors: { ...BASE_VALUES },
         scenario: "base",
@@ -186,27 +202,30 @@ export function useCitySimulation() {
   const applyScenario = useCallback((id) => dispatch({ type: "APPLY_SCENARIO", id }), []);
   const toggle = useCallback((flag) => dispatch({ type: "TOGGLE", flag }), []);
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
+  const setContext = useCallback((ctx) => dispatch({ type: "SET_CONTEXT", ctx, at: Date.now() }), []);
 
-  const { values } = state;
+  const { values, clima, franja } = state;
   const derived = useMemo(() => {
     const sensors = buildSensors(values);
-    const traffic = buildTrafficData(values);
-    const energy = buildEnergyData(values);
+    const traffic = buildTrafficData(values, clima);
+    const energy = buildEnergyData(values, clima);
     const energySummary = summarizeEnergy(energy);
     const trafficSummary = summarizeTraffic(traffic);
-    const health = computeHealth(values, energySummary);
-    const alerts = generateAlerts(values, energySummary);
-    return { sensors, traffic, energy, energySummary, trafficSummary, health, alerts };
-  }, [values]);
+    const security = computeSecurity(values, clima, franja);
+    const health = computeHealth(values, energySummary, security.score);
+    const alerts = generateAlerts(values, energySummary, { clima, franja, security });
+    return { sensors, traffic, energy, energySummary, trafficSummary, security, health, alerts };
+  }, [values, clima, franja]);
 
   const baseline = useMemo(() => {
     const energy = buildEnergyData(BASE_VALUES);
+    const security = computeSecurity(BASE_VALUES, DEFAULT_CONTEXT.clima, DEFAULT_CONTEXT.franja);
     return {
-      health: computeHealth(BASE_VALUES, summarizeEnergy(energy)),
+      health: computeHealth(BASE_VALUES, summarizeEnergy(energy), security.score),
       trafficSummary: summarizeTraffic(buildTrafficData(BASE_VALUES)),
       energySummary: summarizeEnergy(energy),
     };
   }, []);
 
-  return { state, ...derived, baseline, setValue, setHold, applyScenario, toggle, reset };
+  return { state, ...derived, baseline, setValue, setHold, applyScenario, toggle, reset, setContext };
 }
