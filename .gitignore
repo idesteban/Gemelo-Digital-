@@ -1,0 +1,17 @@
+# dependencias
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# producción
+/build
+
+# varios
+.DS_Store
+*.pem
+npm-debug.log*
+.env*.local
+.vercel
+next-env.d.ts
